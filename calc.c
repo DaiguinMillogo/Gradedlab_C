@@ -42,9 +42,43 @@ long long read_number() {
 }
 // read_number: reads a number written with digits, like 25.
 
-long long compute_line() {
+// AI (Claude): prompt "help me with grade 6, * and / with priority".
+// The idea of one function per priority level is Claude's.
+long long compute_term() {
     skip_spaces();
     long long result = read_number();
+    if (error_pos != 0) return 0;
+    skip_spaces();
+
+    while (text[pos] == '*' || text[pos] == '/') {
+        char op = text[pos];
+        pos++;
+        skip_spaces();
+        // we save the position now, because read_number moves pos and the
+        // division by zero must be reported where the right operand starts
+        long start = pos;
+        long long n = read_number();
+        if (error_pos != 0) return 0;
+        if (op == '*') {
+            result = result * n;
+        } else {
+            if (n == 0) {
+                error_pos = start + 1;   // +1 because positions start at 1
+                return 0;
+            }
+            result = result / n;   // C truncates toward zero, as the task asks
+        }
+        skip_spaces();
+    }
+    return result;
+}
+// compute_term: calculates a part made of * and /, like "2 * 5 / 3".
+
+long long compute_line() {
+    skip_spaces();
+    // we call compute_term and not read_number, so that * and / are always
+    // calculated before + and - (this is what gives them the priority)
+    long long result = compute_term();
     if (error_pos != 0) return 0;
     skip_spaces();
 
@@ -52,7 +86,8 @@ long long compute_line() {
         char op = text[pos];
         pos++;
         skip_spaces();
-        long long n = read_number();
+        long long n = compute_term();
+        // after an error we stop at once, so the error stays the first one
         if (error_pos != 0) return 0;
         if (op == '+') {
             result = result + n;
