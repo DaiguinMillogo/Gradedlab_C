@@ -69,6 +69,46 @@ long long compute_primary() {
 // compute_primary: reads a number, or an expression between parentheses.
 
 
+// Design (grade 8): ** has the highest priority and is right-associative,
+// so after the base we call compute_power again for the exponent:
+// "2 ** 3 ** 2" is 2 ** (3 ** 2).
+//
+// AI (Claude): prompt "help me with grade 8, **".
+// The idea of calling compute_power again for the exponent, and the fast
+// power loop (squaring), are Claude's.
+long long compute_power() {
+    long long base = compute_primary();
+    if (error_pos != 0) return 0;
+    skip_spaces();
+
+    if (text[pos] != '*' || text[pos + 1] != '*') {
+        return base;
+    }
+    pos += 2;   // skip the "**"
+    skip_spaces();
+    // saved before reading the exponent: a negative exponent is reported
+    // where the exponent starts
+    long start = pos;
+    long long exp = compute_power();
+    if (error_pos != 0) return 0;
+    if (exp < 0) {
+        error_pos = start + 1;
+        return 0;
+    }
+
+    // fast power: instead of multiplying exp times (too slow for a huge
+    // exponent), we square the base and halve the exponent each turn
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) result = result * base;
+        base = base * base;
+        exp = exp / 2;
+    }
+    return result;
+}
+// compute_power: calculates a ** b, from right to left.
+
+
 
 // Design (grade 6): * and / must be calculated before + and -, so this
 // function handles a whole chain like "2 * 3 / 4" with a loop, from left to
@@ -78,9 +118,11 @@ long long compute_primary() {
 // The idea of one function per priority level is Claude's.
 // Grade 7: read_number is replaced by compute_primary, so that a
 // parenthesis can be used as an operand.
+//// Grade 8: compute_primary is replaced by compute_power, so that ** has a
+// higher priority than * and /.
 long long compute_term() {
     skip_spaces();
-    long long result = compute_primary();
+    long long result = compute_power(); 
     if (error_pos != 0) return 0;
     skip_spaces();
 
@@ -91,7 +133,7 @@ long long compute_term() {
         // we save the position now, because compute_primary moves pos and the
         // division by zero must be reported where the right operand starts
         long start = pos;
-        long long n = compute_primary();
+        long long n = compute_power();
         if (error_pos != 0) return 0;
         if (op == '*') {
             result = result * n;
