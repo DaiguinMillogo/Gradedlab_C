@@ -13,6 +13,10 @@
 #define LASTNAME "millogo"
 #define STUDENT_ID "260ADB180"
 
+
+// pos is our index in the file, starting at 0. Spaces, newlines and comments
+// are skipped by moving pos (never removed), so pos + 1 is always the
+//  position as the task counts it.
 char *text;
 long pos;
 long error_pos = 0;   // 0 means no error so far
