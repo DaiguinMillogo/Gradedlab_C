@@ -15,6 +15,7 @@
 
 char *text;
 long pos;
+long error_pos = 0;   // 0 means no error so far
 
 void skip_spaces() {
     while (text[pos] == ' ' || text[pos] == '\t') {
@@ -25,6 +26,14 @@ void skip_spaces() {
 
 long long read_number() {
     long long n = 0;
+    // AI (Claude): prompt "help me with grade 5 errors".
+    // Every grade 5 error happens here: we expect a digit and find something
+    // else, so the error is reported at that character (pos + 1, because
+    // positions start at 1).
+    if (text[pos] < '0' || text[pos] > '9') {
+        error_pos = pos + 1;
+        return 0;
+    }
     while (text[pos] >= '0' && text[pos] <= '9') {
         n = n * 10 + (text[pos] - '0');
         pos++;
@@ -36,6 +45,7 @@ long long read_number() {
 long long compute_line() {
     skip_spaces();
     long long result = read_number();
+    if (error_pos != 0) return 0;
     skip_spaces();
 
     while (text[pos] == '+' || text[pos] == '-') {
@@ -43,12 +53,19 @@ long long compute_line() {
         pos++;
         skip_spaces();
         long long n = read_number();
+        if (error_pos != 0) return 0;
         if (op == '+') {
             result = result + n;
         } else {
             result = result - n;
         }
         skip_spaces();
+    }
+
+    // the line must end here, otherwise there is an unexpected character
+    if (text[pos] != '\n' && text[pos] != '\0') {
+        error_pos = pos + 1;
+        return 0;
     }
     return result;
 }
@@ -137,13 +154,26 @@ int main(int argc, char **argv) {
         }
         if (text[pos] == '\0') break;
 
-        fprintf(out, "%lld\n", compute_line());
+        long long value = compute_line();
+        if (error_pos != 0) break;
+        fprintf(out, "%lld\n", value);
 
         while (text[pos] != '\n' && text[pos] != '\0') pos++;
         if (text[pos] == '\n') pos++;
     }
-
     fclose(out);
+
+    // with an error, the output must contain only the error (no partial results)
+    if (error_pos != 0) {
+        out = fopen(path, "w");
+        if (out == NULL) {
+            free(text);
+            return 1;
+        }
+        fprintf(out, "ERROR:%ld\n", error_pos);
+        fclose(out);
+    }
+
     free(text);
     return 0;
 }
