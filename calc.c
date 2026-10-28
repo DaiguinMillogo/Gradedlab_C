@@ -1,7 +1,7 @@
 // Daiguin MILLOGO  260ADB180
 // https://github.com/DaiguinMillogo/Gradedlab_C
 // Compile with: gcc -O2 -Wall -Wextra -std=c17 -o calc calc.c -lm
-// Resources used: Claude (Anthropic), conversation history: <lien de cette discussion>
+// Resources used: Claude (Anthropic), conversation history: <https://claude.ai/chat/81484bf6-655d-4776-a2c9-cd31e26add14>
 
 
 #include <stdio.h>
@@ -101,7 +101,7 @@ long long compute_power() {
     long long result = 1;
     while (exp > 0) {
         if (exp % 2 == 1) result = result * base;
-        base = base * base;
+                if (exp > 1) base = base * base;   // no useless squaring at the end (could overflow)
         exp = exp / 2;
     }
     return result;
@@ -118,8 +118,11 @@ long long compute_power() {
 // The idea of one function per priority level is Claude's.
 // Grade 7: read_number is replaced by compute_primary, so that a
 // parenthesis can be used as an operand.
-//// Grade 8: compute_primary is replaced by compute_power, so that ** has a
+// Grade 8: compute_primary is replaced by compute_power, so that ** has a
 // higher priority than * and /.
+
+
+
 long long compute_term() {
     skip_spaces();
     long long result = compute_power(); 
@@ -130,7 +133,7 @@ long long compute_term() {
         char op = text[pos];
         pos++;
         skip_spaces();
-        // we save the position now, because compute_primary moves pos and the
+        // we save the position now, because compute_power moves pos and the
         // division by zero must be reported where the right operand starts
         long start = pos;
         long long n = compute_power();
