@@ -24,6 +24,8 @@ void skip_spaces() {
 }
 // skip_spaces: skips the spaces and tabs.
 
+long long compute_expr();   // declared early because compute_primary calls it
+
 long long read_number() {
     long long n = 0;
     // AI (Claude): prompt "help me with grade 5 errors".
@@ -42,11 +44,43 @@ long long read_number() {
 }
 // read_number: reads a number written with digits, like 25.
 
+
+// AI (Claude): prompt "help me with grade 7, parentheses".
+// I followed the grammar from the assignment (primary := NUMBER | '(' expr ')')
+// and merged Claude's function with my own compute_expr and compute_term.
+long long compute_primary() {
+    skip_spaces();
+    if (text[pos] != '(') {
+        return read_number();
+    }
+    pos++;
+    long long value = compute_expr();
+    if (error_pos != 0) return 0;
+    skip_spaces();
+    // the ')' must be here, otherwise the line ended (or something else
+    // came) and the error is reported at that position
+    if (text[pos] != ')') {
+        error_pos = pos + 1;
+        return 0;
+    }
+    pos++;
+    return value;
+}
+// compute_primary: reads a number, or an expression between parentheses.
+
+
+
+// Design (grade 6): * and / must be calculated before + and -, so this
+// function handles a whole chain like "2 * 3 / 4" with a loop, from left to
+// right. For a division, we check that the operand is not 0 before dividing.
+//
 // AI (Claude): prompt "help me with grade 6, * and / with priority".
 // The idea of one function per priority level is Claude's.
+// Grade 7: read_number is replaced by compute_primary, so that a
+// parenthesis can be used as an operand.
 long long compute_term() {
     skip_spaces();
-    long long result = read_number();
+    long long result = compute_primary();
     if (error_pos != 0) return 0;
     skip_spaces();
 
@@ -54,10 +88,10 @@ long long compute_term() {
         char op = text[pos];
         pos++;
         skip_spaces();
-        // we save the position now, because read_number moves pos and the
+        // we save the position now, because compute_primary moves pos and the
         // division by zero must be reported where the right operand starts
         long start = pos;
-        long long n = read_number();
+        long long n = compute_primary();
         if (error_pos != 0) return 0;
         if (op == '*') {
             result = result * n;
@@ -74,7 +108,11 @@ long long compute_term() {
 }
 // compute_term: calculates a part made of * and /, like "2 * 5 / 3".
 
-long long compute_line() {
+
+// AI (Claude): prompt "help me with grade 7, parentheses".
+// Claude suggested splitting my compute_line in two: compute_expr (this one,
+// which the parentheses can call again) and compute_line (below).
+long long compute_expr() {
     skip_spaces();
     // we call compute_term and not read_number, so that * and / are always
     // calculated before + and - (this is what gives them the priority)
@@ -96,15 +134,23 @@ long long compute_line() {
         }
         skip_spaces();
     }
+    return result;
+}
+// compute_expr: calculates + and - between terms, like "3 + 2 * 5 - 4".
 
-    // the line must end here, otherwise there is an unexpected character
+long long compute_line() {
+    long long result = compute_expr();
+    if (error_pos != 0) return 0;
+
+    // if something is left before the end of the line (like the & in
+    // "2 & 5", or an extra ')'), the error is at that character
     if (text[pos] != '\n' && text[pos] != '\0') {
         error_pos = pos + 1;
         return 0;
     }
     return result;
 }
-// compute_line: calculates one line like "2 + 5 - 3", from left to right.
+// this new procedure compute_line: calculates a whole line and checks that nothing is left.
 
 int main(int argc, char **argv) {
     char *outdir = NULL;
